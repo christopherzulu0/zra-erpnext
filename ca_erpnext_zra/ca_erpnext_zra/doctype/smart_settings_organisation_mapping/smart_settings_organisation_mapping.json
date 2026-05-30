@@ -1,0 +1,104 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-10-21 14:00:14.883951",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "is_active",
+  "company",
+  "branch",
+  "cluster",
+  "branch_code",
+  "device_no",
+  "column_break_zlrk",
+  "organisation",
+  "cluster_name",
+  "department",
+  "warehouse"
+ ],
+ "fields": [
+  {
+   "default": "0",
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Active"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Company",
+   "options": "Company"
+  },
+  {
+   "fieldname": "branch",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Branch",
+   "options": "Branch"
+  },
+  {
+   "fieldname": "cluster",
+   "fieldtype": "Data",
+   "label": "Cluster"
+  },
+  {
+   "fieldname": "column_break_zlrk",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "organisation",
+   "fieldtype": "Data",
+   "label": "Organisation"
+  },
+  {
+   "fieldname": "cluster_name",
+   "fieldtype": "Data",
+   "label": "Cluster Name"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department"
+  },
+  {
+   "fieldname": "warehouse",
+   "fieldtype": "Link",
+   "label": "Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fetch_from": "branch.custom_branch_code",
+   "fieldname": "branch_code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Branch Code"
+  },
+  {
+   "fetch_from": "branch.custom_smart_device_serial_no",
+   "fieldname": "device_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Device No"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-12-03 07:32:15.637656",
+ "modified_by": "Administrator",
+ "module": "Ca Erpnext Zra",
+ "name": "Smart Settings Organisation Mapping",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

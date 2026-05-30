@@ -1,0 +1,130 @@
+import json
+from datetime import datetime
+
+import frappe
+
+from ..doctype.doctype_names_mapping import (
+	COUNTRY_DOCTYPE_NAME,
+	IMPORTED_ITEMS_STATUS_DOCTYPE_NAME,
+	PACKAGING_UNIT_DOCTYPE_NAME,
+	REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
+	UNIT_OF_QUANTITY_DOCTYPE_NAME,
+)
+from ..utils.smart_api_utils import get_link_value, get_or_create_link
+
+
+def imported_items_select_on_success(response: dict, settings_name: str, **kwargs) -> None:
+	items = response.get("Result", {}).get("data", {}).get("itemList", [])
+	batch_size = 20
+	counter = 0
+
+	if not items:
+		return
+
+	for item in items:
+		try:
+			item_id = f"{item.get('itemSeq')}{item.get('dclDe')}{item.get('taskCd')}"
+			existing_item = frappe.db.get_value(
+				REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
+				{"item_identifier": item_id},
+				"name",
+				order_by="creation desc",
+			)
+
+			if existing_item:
+				continue
+
+			response_data = {
+				"item_identifier": item_id,
+				"item_name": item.get("itemNm"),
+				"task_code": item.get("taskCd"),
+				"declaration_date": parse_date(item.get("dclDe")),
+				"item_sequence": item.get("itemSeq"),
+				"declaration_number": item.get("dclNo"),
+				"declaration_reference_number": item.get("dclRefNum"),
+				"imported_item_status_code": item.get("imptItemsttsCd"),
+				"imported_item_status": get_link_value(
+					IMPORTED_ITEMS_STATUS_DOCTYPE_NAME,
+					"code",
+					item.get("imptItemsttsCd"),
+				),
+				"hs_code": item.get("hsCd"),
+				"origin_nation_code": get_link_value(COUNTRY_DOCTYPE_NAME, "code", item.get("orgnNatCd")),
+				"export_nation_code": get_link_value(COUNTRY_DOCTYPE_NAME, "code", item.get("exptNatCd")),
+				"package": item.get("pkg"),
+				"packaging_unit_code": get_or_create_link(
+					PACKAGING_UNIT_DOCTYPE_NAME, "code", item.get("pkgUnitCd")
+				),
+				"quantity": item.get("qty"),
+				"quantity_unit_code": get_or_create_link(
+					UNIT_OF_QUANTITY_DOCTYPE_NAME,
+					"code",
+					item.get("qtyUnitCd"),
+				),
+				"gross_weight": item.get("totWt"),
+				"net_weight": item.get("netWt"),
+				"suppliers_name": item.get("spplrNm"),
+				"agent_name": item.get("agntNm"),
+				"invoice_foreign_currency_amount": item.get("invcFcurAmt"),
+				"invoice_foreign_currency": item.get("invcFcurCd"),
+				"foreign_currency_exchange_rate": item.get("invcFcurExcrt"),
+				"settings": settings_name,
+				"branch_code": kwargs.get("bhfid"),
+			}
+
+			item_doc = frappe.get_doc({"doctype": REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME, **response_data})
+			item_doc.insert(ignore_permissions=True, ignore_mandatory=True, ignore_if_duplicate=True)
+
+			counter += 1
+			if counter % batch_size == 0:
+				frappe.db.commit()
+				frappe.logger().info(f"Committed batch of {batch_size} items")
+
+		except Exception as e:
+			raise e
+
+	if counter % batch_size != 0:
+		frappe.db.commit()
+
+	frappe.msgprint(
+		"Imported Items fetched successfully. Go to <b>Crystallised Smart Registered Import Item</b> Doctype for more information."
+	)
+
+
+def import_item_update_on_success(response: dict, document_name: str, **kwargs) -> None:
+	import_item_list = kwargs.get("payload", {}).get("importItemList", [])
+
+	status_code = import_item_list[0].get("imptItemSttsCd")
+	status_code_name = frappe.db.get_value(IMPORTED_ITEMS_STATUS_DOCTYPE_NAME, {"code": status_code}, "name")
+	frappe.db.set_value(
+		REGISTERED_IMPORTED_ITEM_DOCTYPE_NAME,
+		document_name,
+		{"imported_item_status_code": status_code, "imported_item_status": status_code_name},
+	)
+
+
+def parse_date(date_str: str) -> None:
+	formats = [
+		"%Y%m%d",
+		"%m%d%Y",
+		"%d%m%Y",
+		"%Y-%m-%d",
+		"%d-%m-%Y",
+		"%m/%d/%Y",
+		"%d/%m/%Y",
+		"%Y/%m/%d",
+		"%B %d, %Y",
+		"%b %d, %Y",
+		"%Y.%m.%d",
+	]
+	for fmt in formats:
+		try:
+			return datetime.strptime(date_str, fmt)
+		except ValueError:
+			continue
+	if date_str.isdigit():
+		try:
+			return datetime.fromtimestamp(int(date_str))
+		except ValueError:
+			pass
+	raise ValueError(f"Invalid date format: {date_str}")
